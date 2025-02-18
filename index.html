@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Jogo da cobra</title>
+  <style>
+    #container {
+      background: #000000; 
+      display: flex; 
+      justify-content: center; 
+      flex-direction: column; 
+      align-items: center;
+    }
+    #title {
+      color: #fff;
+    }
+    #game-board {
+      border: 1px solid #fff;
+    }
+    #score, #best-score, #status {
+      color: white;
+      font-size: 24px;
+      margin-bottom: 10px;
+    }
+    #apple {
+      position: absolute;
+      width: 20px;
+      height: 20px;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body id="container">
+  <h1 id="title">Jogo da cobrinha</h1>
+  <h1 id="score">Pontuação: 0</h1> <!-- Exibe a pontuação -->
+  <h1 id="best-score">Melhor Pontuação: 0</h1> <!-- Exibe a melhor pontuação -->
+  <canvas id="game-board" width="400" height="400"></canvas>
+  <img id="apple" src="https://media3.giphy.com/media/Vzx4sBK20062zvYGpg/giphy.gif?cid=6c09b952g0mt6nu2lzckad4r53yp85h6f1g4wlaa0agjrf4y&ep=v1_stickers_search&rid=giphy.gif&ct=s">
+  <h1 id="status"></h1> <!-- Exibe a mensagem que perdeu o game -->
+
+  <script>
+    const canvas = document.getElementById("game-board");
+    const scoreElement = document.getElementById("score");
+    const bestScoreElement = document.getElementById("best-score");
+    const statusElement = document.getElementById("status");
+    const ctx = canvas.getContext("2d");
+
+    const gridSize = 20;
+    let snake, apple, direction, gameInterval, score;
+    const appleImage = document.getElementById("apple");
+    
+    function initGame() {
+      snake = [{ x: 5, y: 5 }];
+      apple = { x: 10, y: 10 };
+      direction = "right";
+      score = 0;  // Reseta a pontuação ao reiniciar o jogo
+      scoreElement.textContent = `Pontuação: ${score}`; // Atualiza a pontuação exibida
+      bestScoreElement.textContent = `Melhor Pontuação: ${bestScore}`; // Atualiza a melhor pontuação exibida
+      statusElement.textContent = '';
+
+      clearInterval(gameInterval);  // Para o jogo anterior
+      gameInterval = setInterval(gameLoop, 100);  // Inicia o loop do novo jogo
+      updateApplePosition();
+    }
+
+    function drawSnake() {
+      // Desenha a cabeça com uma cor diferente
+      ctx.fillStyle = "darkgreen";
+      ctx.fillRect(snake[0].x * gridSize, snake[0].y * gridSize, gridSize, gridSize);
+
+      // Desenha o corpo da cobra com a cor padrão
+      ctx.fillStyle = "green";
+      for (let i = 1; i < snake.length; i++) {
+        ctx.fillRect(snake[i].x * gridSize, snake[i].y * gridSize, gridSize, gridSize);
+      }
+    }
+
+    function updateApplePosition() {
+      appleImage.style.left = apple.x * gridSize + canvas.offsetLeft + "px";
+      appleImage.style.top = apple.y * gridSize + canvas.offsetTop + "px";
+    }
+
+    // Recupera a melhor pontuação salva no localStorage
+    let bestScore = localStorage.getItem("pontuacao") ? parseInt(localStorage.getItem("pontuacao")) : 0;
+
+    // Atualiza a exibição inicial da best score
+    bestScoreElement.textContent = `Melhor Pontuação: ${bestScore}`;
+
+    function update() {
+      const head = { ...snake[0] };
+
+      if (direction === "up") {
+        head.y -= 1;
+      } else if (direction === "down") {
+        head.y += 1;
+      } else if (direction === "left") {
+        head.x -= 1;
+      } else if (direction === "right") {
+        head.x += 1;
+      }
+
+      snake.unshift(head);
+
+      if (head.x === apple.x && head.y === apple.y) {
+        apple.x = Math.floor(Math.random() * (canvas.width / gridSize));
+        apple.y = Math.floor(Math.random() * (canvas.height / gridSize));
+        updateApplePosition();
+        score++; // Aumenta a pontuação
+
+        scoreElement.textContent = `Pontuação: ${score}`;
+
+        // Atualiza a best score no localStorage
+        if (score > bestScore) {
+          bestScore = score;
+          bestScoreElement.textContent = `Melhor Pontuação: ${bestScore}`;
+          localStorage.setItem("pontuacao", bestScore);
+        }
+      } else {
+        snake.pop();
+      }
+    }
+
+
+    function clearCanvas() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+
+    function checkCollision() {
+      const head = snake[0];
+
+      // Verifica se a cobra atingiu as bordas e "teleporta" para o lado oposto
+      if (head.x < 0) {
+        head.x = canvas.width / gridSize - 1;
+      } else if (head.x >= canvas.width / gridSize) {
+        head.x = 0;
+      } else if (head.y < 0) {
+        head.y = canvas.height / gridSize - 1;
+      } else if (head.y >= canvas.height / gridSize) {
+        head.y = 0;
+      }
+
+      // Verifica se a cobra colidiu com ela mesma
+      for (let i = 1; i < snake.length; i++) {
+        if (head.x === snake[i].x && head.y === snake[i].y) {
+          setTimeout(() => {
+            initGame(); // Reinicia o jogo se colidir com o corpo
+          }, 300);
+          return true;
+        }
+      }
+
+      return false;
+    }
+
+    function gameLoop() {
+      clearCanvas();
+      update();
+      drawSnake();
+      if (checkCollision()) {
+        statusElement.textContent = "Você Perdeu!";
+        setTimeout(() => {
+          clearInterval(gameInterval);  // Interrompe o jogo se houver colisão
+          }, 299);
+      }
+    }
+
+    document.addEventListener("keydown", event => {
+      if (event.key === "ArrowUp" && direction !== "down") {
+        direction = "up";
+      } else if (event.key === "ArrowDown" && direction !== "up") {
+        direction = "down";
+      } else if (event.key === "ArrowLeft" && direction !== "right") {
+        direction = "left";
+      } else if (event.key === "ArrowRight" && direction !== "left") {
+        direction = "right";
+      }
+    });
+
+    initGame();  // Inicializa o jogo
+
+  </script>
+</body>
+</html>
